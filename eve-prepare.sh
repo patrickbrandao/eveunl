@@ -5,6 +5,8 @@
 #	Autor: Patrick Brandao, patrickbrandao@gmail.com, www.patrickbrandao.com
 #	GIT: https://github.com/patrickbrandao/eveunl
 #
+export PATH="/bin:/sbin:/usr/sbin:/usr/bin:/usr/local/bin:/usr/local/sbin:$PATH"
+
 # Constantes
 	# espaco minimo em disco, em kbytes
 	MIN_FREE_SPACE="131072"
@@ -27,12 +29,22 @@
 		6.34 6.34.1 6.34.2 6.34.3 6.34.4 6.34.5 6.34.6
 		6.35 6.35.1 6.35.2 6.35.4
 		6.36 6.36.1 6.36.2 6.36.3 6.36.4
-		6.37 6.37.1 6.37.2 6.37.3 6.37.4
-		6.38 6.38.1
+		6.37 6.37.1 6.37.2 6.37.3 6.37.4 6.37.5
+		6.38 6.38.1 6.38.2 6.38.3 6.38.4 6.38.5 6.38.6
+		6.39 6.39.1 6.39.2 6.39.3
+		6.40 6.40.1 6.40.2 6.40.3 6.40.4 6.40.5
+	"
+
+	# Versoes do VyOS x86
+	ALL_VYOS_VERSIONS="
+		1.1.7
 	"
 
 	# Diretorio de downloads
 	EVE_DOWNLOAD_DIR="/opt/unetlab/downloads"
+
+	# Base remota de icones
+	ICON_HTTP_BASE="https://raw.githubusercontent.com/patrickbrandao/eveunl/master/icons/"
 
 	# Dados de repositorio particular IOL
 	IOL_HTTP_BASE="http://www.ajustefino.com/downloads/iol"
@@ -46,7 +58,84 @@
 	DYM_EVEDIR="/opt/unetlab/addons/dynamips"
 	DYM_URLSIGLIST="$DYM_HTTP_BASE/$DYM_SIGLIST"
 
-# Funcoes
+	# Base de imagens Q-EMU
+	QEMU_HTTP_BASE="http://www.ajustefino.com/downloads/qemu"
+	QEMU_SIGLIST="index.md5"
+	QEMU_EVEDIR="/opt/unetlab/addons/qemu"
+	QEMU_URLSIGLIST="$QEMU_HTTP_BASE/$QEMU_SIGLIST"
+
+
+
+
+
+
+
+
+
+
+
+
+
+# Opcoes de instalacao interativa
+    INST_ALL=0
+    INST_INT=0
+
+    INST_IOL=0
+    INST_IOS=0
+
+    INST_VYOS=0
+    INST_MK=0
+
+    whiptail --title "Selecione imagens" --checklist \
+	"Selecione quais imagens deseja instalar no simulador" 20 78 8 \
+	"ALL" "Instalar todas as imagens e versoes (+50g)" ON \
+	"INT" "Instalacao interativa, escolher imagens" ON \
+	"CISCO-IOL" "Instalar imagens Cisco IOL" OFF \
+	"CISCO-IOS" "Instalar imagens Cisco IOS - Dynamips" OFF \
+	"VYOS" "Instalar Linux VyOS" OFF \
+	"MK-ROS" "Instalar Mikrotik Router OS" OFF \
+	2> /tmp/inst_opt
+
+    inst_opt=$(cat /tmp/inst_opt | sed 's#[^ a-z0-9A-Z-]##g' 2>/dev/null)
+    inst_opt=$(echo $inst_opt)
+    for x in $inst_opt; do
+	[ "$x" = "ALL" ] && {
+		INST_ALL=1
+		INST_INT=1
+		INST_IOL=1
+		INST_IOS=1
+		INST_MK=1
+		INST_VYOS=1
+	}
+	[ "$x" = "INT" ] && INST_INT=1
+
+	[ "$x" = "CISCO-IOL" ] && INST_IOL=1
+	[ "$x" = "CISCO-IOS" ] && INST_IOS=1
+
+	[ "$x" = "MK-ROS" ] && INST_MK=1
+	[ "$x" = "VYOS" ] && INST_VYOS=1
+
+    done
+
+    echo "Opcoes de instalacao: $inst_opt"
+    echo
+    echo "   INST_ALL....: $INST_ALL"
+    echo "   INST_INT....: $INST_INT"
+    echo "   INST_IOL....: $INST_IOL"
+    echo "   INST_IOS....: $INST_IOS"
+    echo "   INST_VYOS...: $INST_VYOS"
+    echo "   INST_MK.....: $INST_MK"
+    echo
+
+    # Incoerencias
+    [ "$INST_ALL" = "0" -a "$INST_MK" = "0" -a "$INST_IOL" = "0" -a "$INST_IOS" = "0" -a "$INST_VYOS" = "0" ] && {
+	echo
+	echo "ERRO: Nenhuma opcao de instalacao foi selecionada"
+	echo
+	exit 9
+    }
+
+
 	_echo_lighred(){ /bin/echo -e "${ANSI_LIGHT_RED}$@$ANSI_RESET"; }
 	_echo_lighgreen(){ /bin/echo -e "${ANSI_LIGHT_GREEN}$@$ANSI_RESET"; }
 	_echo_lighyellow(){ /bin/echo -e "${ANSI_LIGHT_YELLOW}$@$ANSI_RESET"; }
@@ -54,8 +143,9 @@
 	_echo_lighpink(){ /bin/echo -e "${ANSI_LIGHT_PINK}$@$ANSI_RESET"; }
 	_echo_lighcyan(){ /bin/echo -e "${ANSI_LIGHT_CYAN}$@$ANSI_RESET"; }
 	_echo_lighwhite(){ /bin/echo -e "${ANSI_LIGHT_WHITE}$@$ANSI_RESET"; }
-    _alert(){ echo; _echo_lighyellow "** Alerta: $1"; echo; }
-    _abort(){ echo; _echo_lighred "** ABORTADO: $1"; echo; exit $2; }
+	_alert(){ echo; _echo_lighyellow "** Alerta: $1"; echo; }
+	_abort(){ echo; _echo_lighred "** ABORTADO: $1"; echo; exit $2; }
+
 
 	# obter arquivo via HTTP
 	# - obter md5 de um arquivo
@@ -64,6 +154,7 @@
 	_testmd5(){ _m=$(_getmd5 "$1"); [ "x$_m" = "x$2" ] && return 0; return 1; }
 	# - obter arquivo via HTTP
 	_http_get(){
+		_ipv6off
 		_hg_url="$1"; _hg_file="$2"; _hg_md5="$3"; _hg_opt=""; _hg_debug=""
 		_hg_eu=$(echo "$_hg_url" | cut -f1 -d'?')
 		_echo_lighgreen "> HTTP-GET: Baixando: [$_hg_eu] -> [$_hg_file]"
@@ -71,6 +162,17 @@
 		wget $_hg_opt "$_hg_url?nocache=$RANDOM"; _hg_ret="$?"
 		if [ "$_hg_ret" = "0" -a "x$_hg_md5" != "x" ]; then _testmd5 "$_hg_file" "$_hg_md5"; _hg_ret="$?"; fi
 		return $_hg_ret
+	}
+	# - obter md5 armazenado num arquivo do site
+	_http_get_md5(){
+	    hmurl="$1"
+	    [ "x$hmurl" = "x" ] && return 1
+	    r=$(curl "$hmurl" 2>/dev/null)
+	    #echo; echo "RL: $hmurl"; echo "RT: [$r]"; echo
+	    [ "x$r" = "x" ] && return 2
+	    n=$(echo -n "$r" | wc -c)
+	    [ "x$n" = "x32" ] || return 3
+	    echo "$r"
 	}
 	# - sincronizar arquivos via HTTP
 	_http_sync(){
@@ -167,13 +269,25 @@
 		done
 	}
 
+
 	# procurar binarios, e se nao existirem instalar o respectivo pacote
 	_procedure_pkgs(){
-		pp_important="/usr/bin/mcedit:mc /usr/sbin/iptraf:iptraf /usr/bin/bwm-ng:bwm-ng /usr/bin/rsync:rsync /usr/bin/host:host /usr/sbin/ntpdate:ntpdate /usr/bin/unzip:unzip"
+		pp_important="
+			/usr/bin/mcedit:mc /usr/sbin/iptraf:iptraf /usr/bin/bwm-ng:bwm-ng
+			/usr/bin/rsync:rsync /usr/bin/host:host /usr/sbin/ntpdate:ntpdate
+			/usr/bin/unzip:unzip /usr/sbin/arping:arping
+			/usr/lib/quagga/zebra:quagga
+			/usr/sbin/pppd:ppp
+			/usr/bin/lsof:lsof
+			/usr/sbin/xl2tpd:xl2tpd
+			/usr/bin/nmap:nmap
+			/usr/bin/curl:curl
+		"
 		pp_list="$pp_important /usr/bin/wget:wget /usr/bin/mysql:mysql-server /usr/bin/htop:htop"
 		pp_vitalbins="/bin/date /usr/bin/md5sum /usr/bin/unzip /usr/bin/wget /usr/bin/unzip"
 		_echo_lighgreen "> Verificando programas..."
 		for ppitem in $pp_list; do
+			_ipv6off
 			ppbin=$(echo $ppitem | cut -f1 -d:); pppkg=$(echo $ppitem | cut -f2 -d:);
 			[ -x "$ppbin" ] || { _echo_lighgreen "> Instalando: $ppbin / $pppkg"; apt-get -y install $pppkg; }
 		done
@@ -183,6 +297,24 @@
 		for ppvital in $pp_vitalbins; do [ -x "$ppvital" ] || _abort "Binario vital nao encontrado: $ppvital"; done
 		_echo_lighgreen "> Programas OK"
 	}
+
+	# instalar pacotes auxiliares
+	_procedure_auxpkgs(){
+	    list="
+		mtr
+		mtr-tiny
+		whois
+		pptp
+		snmp
+		links
+		tcpdump
+		openswan
+		xl2tpd
+		l2tp-ipsec-vpn
+	    "
+
+	}
+
 	# verificar espaco livre, nunca deixar menos que minimo seguro
 	_procedure_check_freespace(){
 		# obter free-space em k orientado a pasta de armazenamento do EVE
@@ -190,8 +322,18 @@
 		[ "x$freespace" = "x" ] && return
 		[ "$freespace" -lt "$MIN_FREE_SPACE" ] && _abort "Espaco livre em disco inferior ao minimo de seguranda: $MIN_FREE_SPACE"
 	}
+
+
+
+
 	# Ajustar permissoes do UNL/EVE
 	_eve_fixpermissions(){ _echo_lighpink "> Ajustando permissoes UNL/EVE-NG"; /opt/unetlab/wrappers/unl_wrapper -a fixpermissions 2>/dev/null 1>/dev/null; }
+
+
+
+
+	# Funcoes 05
+
 
 
 # Variaveis
@@ -202,18 +344,35 @@
 
 	# x - espaco minimo
 	_procedure_check_freespace
+
+	# x - sem suporte a vm/kvm/vmx/svm
+	tmp=$(cat /proc/cpuinfo| egrep "vmx|svm")
+	[ "x$tmp" = "x" ] && _abort "O suporte a VMX/AMD-V/VT-X/KVM nao esta ativo."
+
 	# - remover alias chato
 	{ unalias cp; unalias mv; unalias rm; } 2>/dev/null 1>/dev/null
 
-# Instalar programas no Ubuntu
-#-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-= PREPARAR UBUNTU
+	# IPv6 atrapalha mais que ajuda
+	_ipv6off(){
+	    for i in $(seq 0 1 20); do
+		ip -6 addr flush dev pnet$i 2>/dev/null
+		ip -6 route flush dev pnet$i 2>/dev/null
+		sysctl -w net.ipv6.conf.pnet$i.autoconfig=0 1>/dev/null 2>/dev/null
+		sysctl -w net.ipv6.conf.pnet$i.accept_ra=0 1>/dev/null 2>/dev/null
+	    done
+	    sysctl -w net.ipv6.conf.all.autoconf=0 2>/dev/null 1>/dev/null
+	    sysctl -w net.ipv6.conf.default.autoconf=0 2>/dev/null 1>/dev/null
+	    sysctl -w net.ipv6.conf.all.accept_ra=0 2>/dev/null 1>/dev/null
+	    sysctl -w net.ipv6.conf.default.accept_ra=0 2>/dev/null 1>/dev/null
+	}
+	_ipv6off
 
-	# 0 - timezone
-	tzflag="/tmp/tzdata-done"
-	if [ ! -f "$tzflag" ]; then
-		dpkg-reconfigure tzdata && touch $tzflag
-	fi
-	# 1 - Atualizar repositorios
+
+
+
+
+
+	# - Atualizar repositorios
 	updtflag="/tmp/update-done-$today"
 	if [ ! -f "$updtflag" ]; then
 		_echo_lighgreen "> Atualizando repositorios"
@@ -222,7 +381,24 @@
 	[ -f "$updtflag" ] || _abort "Falhou ao realizar update, tente novamente"
 	[ -f "$updtflag" ] && _echo_lighgreen "> Atualizacao de repositorios OK"
 
-	# 2 - testar INTERNET
+
+# Instalar EVE
+    _echo_lighpink "> Instalando EVE-NG"
+    apt autoremove
+    apt-get -y install eve-ng
+    apt-get dist-upgrade
+    apt-get -y install eve-ng
+
+
+
+	# 0 - timezone
+	tzflag="/tmp/tzdata-done"
+	if [ ! -f "$tzflag" ]; then
+		dpkg-reconfigure tzdata && touch $tzflag
+	fi
+
+
+	# - testar INTERNET
 	_echo_lighgreen "> Testando acesso a internet"
 	inetflag="/tmp/internet-done-$nowh"
 	if [ ! -f "$inetflag" ]; then
@@ -248,24 +424,29 @@
 	fi
 	_echo_lighgreen "> Internet OK"
 
-	# 3 - Instalar binarios necessarios
+
+	# - Instalar binarios necessarios
 	_procedure_pkgs
+
+	# - Instalar pacotes auxiliares para deixar o sistema completo
+	_procedure_auxpkgs
+
 
 	# 4 - Upgrade de sistema
 	upgflag="/tmp/upgrade-done-$today"
-    if [ ! -f "$upgflag" ]; then
-    	_echo_lighgreen "> Atualizando pacotes"
-    	apt-get -y upgrade && touch $upgflag
-    	[ -f "$upgflag" ] && apt -y autoremove
-    fi
+	if [ ! -f "$upgflag" ]; then
+		_echo_lighgreen "> Atualizando pacotes"
+    	    apt-get -y upgrade && touch $upgflag
+    	    [ -f "$upgflag" ] && apt -y autoremove
+	fi
 	[ -f "$upgflag" ] || _abort "Falhou ao realizar UPGRADE de pacotes, tente novamente"
 	[ -f "$upgflag" ] && _echo_lighgreen "> Atualizacao de pacotes OK"
+
 
 	# Instalar novamente para garantir sanidade apos upgrade e autoremove
 	_procedure_pkgs
 	_procedure_check_freespace
 
-#-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-= UBUNTU OK !!
 
 #-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-= Preparar EVE-NG
 
@@ -298,8 +479,9 @@
 	_echo_lighcyan "> Verificando EVE-NG OK"
 	echo
 
-#-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-= Imagens MIKROTIK
 
+#-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-= Imagens MIKROTIK
+if [ "x$INST_MK" = "x1" ]; then
 	echo
 	_echo_lighcyan "> Adicionando imagens MIKROTIK"
 
@@ -335,9 +517,15 @@
 
 	_echo_lighcyan "> Concluido: Imagens MIKROTIK"
 	echo
+else
+	_echo_lighyellow "> DESATIVADO: imagens MIKROTIK"
+fi
+
+
+
 
 #-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-= Imagens IOL
-	
+if [ "x$INST_IOL" = "x1" ]; then
 	echo
 	_echo_lighcyan "> Adicionando imagens Cisco-IOL"
 
@@ -355,10 +543,12 @@
 
 	_echo_lighcyan "> Concluido: Imagens Cisco-IOL"
 	echo
-
+else
+    _echo_lighyellow "> DESATIVADO: imagens Cisco-IOL"
+fi
 
 #-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-= Imagens DYNAMIPS
-
+if [ "x$INST_IOS" = "x1" ]; then
 	echo
 	_echo_lighcyan "> Adicionando imagens Dynamips"
 
@@ -434,10 +624,91 @@
 
 	_echo_lighcyan "> Concluido: Imagens Dynamips"
 	echo
+else
+    _echo_lighyellow "> DESATIVADO: imagens Cisco-IOS"
+fi
 
 
-#-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-= Imagens 
+#-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-= Imagens VyOS
+if [ "x$INST_VYOS" = "1" ]; then
+	echo
+	_echo_lighcyan "> Adicionando imagens VyOS"
 
+	# Funcao para instalar pela versao
+	_install_vyos_version(){
+		vyosver="$1"
+		[ "x$vyosver" = "x" ] && return 98
+		# - verificar se ja existe
+		vyosrundir="/opt/unetlab/addons/qemu/vyos-$vyosver"
+		qcow2file="$vyosrundir/hda.acow2"
+		[ -f "$qcow2file" ] && { _echo_lighcyan " -> VyOS-$vyosver: Imagem OK"; return 0; }
+		rm -rf "$vyosrundir" 2>/dev/null
+		# download da imagem do site da mititiki
+		vyosqcow2url="$QEMU_HTTP_BASE/vyos-$vyosver.qcow2"
+		vyosqcow2md5="$QEMU_HTTP_BASE/vyos-$vyosver.md5"
+		# obter MD5 para validar integridade do arquivo
+		_http_get_md5 "$vyosqcow2md5"
+		vyosmd5=$(_http_get_md5 "$vyosqcow2md5"); r="$?"
+		if [ "x$vyosmd5" = "x" ]; then
+			_echo_lighyellow "VyOS-$vyosver: Erro $r ao obter md5 ($vyosqcow2md5)"
+			return 81
+		fi
+		_echo_lighcyan " -> VyOS-$vyosver: Obtendo via URL $vyosqcow2url"
+		vyosoutfile="/tmp/vyos-$vyosver.qcow2"
+		rm -f $vyosoutfile 2>/dev/null
+		_http_get "$vyosqcow2url" "$vyosoutfile"; wr="$?"
+		[ "$wr" = "0" ] || { _echo_lighyellow "VyOS-$vyosver: Erro ao baixar [$vyosqcow2url] para [$vyosoutfile]"; return 91; }
+		_echo_lighcyan " -> VyOS-$vyosver: Download concluido - $vyosoutfile"
+		# conferir md5 do arquivo baixado com o arquivo assinado no site
+		vmd5=$(_getmd5 "$vyosoutfile")
+		if [ "$vmd5" = "$vyosmd5" ]; then
+		    # movendo para local oficial
+		    mkdir -p "$vyosrundir" || _abort "Erro $? ao criar diretorio: $vyosrundir"
+		    mv "$vyosoutfile" "$qcow2file" || _abort "Erro $? ao mover qcow2: [$vyosoutfile] [$qcow2file]"
+		    _echo_lighgreen " -> VyOS-$vyosver: Nova imagem instalada com sucesso: $qcow2file"
+		else
+		    # corrompeu
+		    _echo_lighyellow "VyOS-$vyosver: Erro ao obter md5 [$vmd5] wrong [$vyosmd5]"
+		    return 82
+		fi
+	}
+
+	# Instalar todas as versoes
+	for vyosv in $ALL_VYOS_VERSIONS; do _install_vyos_version "$vyosv"; _procedure_check_freespace; done
+
+	_echo_lighcyan "> Concluido: Imagens VyOS"
+	echo
+else
+    _echo_lighyellow "> DESATIVADO: imagens VyOS"
+fi
+
+
+
+
+#-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-= Melhorar estilo
+
+    # Obter master.zip do projeto eveunl
+    eveunlmaster="/tmp/eveunl-master.zip"
+    if [ -f "$eveunlmaster" ]; then
+	_echo_lighcyan "> Pacote de personalizacao ja aplicado ($eveunlmaster)"
+    else
+	_http_get "https://github.com/patrickbrandao/eveunl/archive/master.zip" "$eveunlmaster"
+	if [ -f "$eveunlmaster" ]; then
+	    rm -rf /tmp/eveunl 2>/dev/null
+	    mkdir /tmp/eveunl 2>/dev/null
+	    cd /tmp/eveunl || _abort "> Falhou ao entrar em /tmp/eveunl"
+	    unzip $eveunlmaster; sn="$?"
+	    if [ "$sn" = "0" ]; then
+		cp eveunl-master/icons/* /opt/unetlab/html/images/icons/ || _alert "> Problema ao copiar icones 1"
+		cp eveunl-master/icons/Cloud.png /opt/unetlab/html/images/cloud.png || _alert "> Problema ao copiar icones 2"
+	    else
+		rm $eveunlmaster 2>/dev/null
+		_alert "> Falhou ao descompactar $eveunlmaster"
+	    fi
+	else
+	    _echo_lighyellow "> Incapaz de personalizar, arquivo nao foi baixado";
+	fi
+    fi
 
 
 #-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-= Acabou
@@ -445,12 +716,5 @@
 	_eve_fixpermissions
 	_echo_lighpink "* EVE-NG Concluido!"
 	echo
-
-
-
-
-
-
-
 
 
