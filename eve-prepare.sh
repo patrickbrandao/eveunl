@@ -511,6 +511,7 @@ if [ "x$INST_MK" = "x1" ]; then
 		_echo_lighcyan " -> Mikrotik-$rosver: Download concluido - $rosoutfile"
 		# Descompactar
 		cd /tmp || _abort "Erro $? ao acessar diretorio /tmp"
+		[ -f "$rosoutfileunzipped" ] && rm -f "$rosoutfileunzipped" 2>/dev/null
 		unzip "$rosoutfile" || _abort "Erro $? ao descomprimir $rosoutfile"
 		[ -f "$rosoutfileunzipped" ] || _abort "Arquivo resultante do unzip nao encontrado: $rosoutfileunzipped"
 		# Converter para qCow2
