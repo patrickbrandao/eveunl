@@ -516,7 +516,7 @@ if [ "x$INST_MK" = "x1" ]; then
 		# Converter para qCow2
 		mkdir -p "$rosrundir" || _abort "Erro $? ao criar diretorio [$rosrundir]"
 		_echo_lighcyan " -> Mikrotik-$rosver: Convertendo [$rosoutfile] para [$qcow2file]"
-		qcmd="/opt/qemu/bin/qemu-img convert -f vmdk -O qcow2 '$rosoutfileunzipped' '$qcow2file'"
+		qcmd="/opt/qemu/bin/qemu-img convert -f raw -O qcow2 '$rosoutfileunzipped' '$qcow2file'"
 		_echo_lighcyan " -> # $qcmd"
 		eval "$qcmd" || _abort "Erro $? ao converter vmdk: $qcmd"
 		# remover arquivo original baixado
@@ -729,4 +729,6 @@ fi
 	_eve_fixpermissions
 	_echo_lighpink "* EVE-NG Concluido!"
 	echo
+
+
 
