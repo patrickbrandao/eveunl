@@ -32,9 +32,9 @@ export PATH="/bin:/sbin:/usr/sbin:/usr/bin:/usr/local/bin:/usr/local/sbin:$PATH"
 		6.37 6.37.1 6.37.2 6.37.3 6.37.4 6.37.5
 		6.38 6.38.1 6.38.2 6.38.3 6.38.4 6.38.5 6.38.6
 		6.39 6.39.1 6.39.2 6.39.3
-		6.40 6.40.1 6.40.2 6.40.3 6.40.4 6.40.5 6.40.6 6.40.7
+		6.40 6.40.1 6.40.2 6.40.3 6.40.4 6.40.5 6.40.6 6.40.7 6.40.8
 		6.41
-		6.42
+		6.42 6.42.1 6.42.2 6.42.3
 	"
 
 	# Versoes do VyOS x86
@@ -313,6 +313,7 @@ export PATH="/bin:/sbin:/usr/sbin:/usr/bin:/usr/local/bin:/usr/local/sbin:$PATH"
 		openswan
 		xl2tpd
 		l2tp-ipsec-vpn
+		strace
 	    "
 	    for pkg in $list; do
 		apt-get -y install $pkg
@@ -495,24 +496,32 @@ if [ "x$INST_MK" = "x1" ]; then
 		[ "x$rosver" = "x" ] && return 99
 		# - verificar se ja existe
 		rosrundir="/opt/unetlab/addons/qemu/mikrotik-$rosver"
-		qcow2file="$rosrundir/hda.acow2"
+		qcow2file="$rosrundir/hda.qcow2"
 		[ -f "$qcow2file" ] && { _echo_lighcyan " -> Mikrotik-$rosver: Imagem OK"; return 0; }
+		# Apagar lixo anterior
 		rm -rf "$rosrundir" 2>/dev/null
 		# download da imagem do site da mititiki
-		rosvmdkurl="http://download2.mikrotik.com/routeros/$rosver/chr-$rosver.vmdk"
+		rosvmdkurl="http://download2.mikrotik.com/routeros/$rosver/chr-$rosver.img.zip"
 		_echo_lighcyan " -> Mikrotik-$rosver: Obtendo via URL $rosvmdkurl"
-		rosoutfile="/tmp/chr-$rosver.vmdk"
+		rosoutfile="/tmp/chr-$rosver.img.zip"
+		rosoutfileunzipped="/tmp/chr-$rosver.img"
 		rm -f $rosoutfile 2>/dev/null
 		_http_get "$rosvmdkurl" "$rosoutfile"; wr="$?"
 		[ "$wr" = "0" ] || { _echo_lighyellow "Mikrotik-$rosver: Erro ao baixar [$rosvmdkurl] para [$rosoutfile]"; return 91; }
 		_echo_lighcyan " -> Mikrotik-$rosver: Download concluido - $rosoutfile"
+		# Descompactar
+		cd /tmp || _abort "Erro $? ao acessar diretorio /tmp"
+		unzip "$rosoutfile" || _abort "Erro $? ao descomprimir $rosoutfile"
+		[ -f "$rosoutfileunzipped" ] || _abort "Arquivo resultante do unzip nao encontrado: $rosoutfileunzipped"
 		# Converter para qCow2
 		mkdir -p "$rosrundir" || _abort "Erro $? ao criar diretorio [$rosrundir]"
 		_echo_lighcyan " -> Mikrotik-$rosver: Convertendo [$rosoutfile] para [$qcow2file]"
-		qcmd="/opt/qemu/bin/qemu-img convert -f vmdk -O qcow2 '$rosoutfile' '$qcow2file'"
+		qcmd="/opt/qemu/bin/qemu-img convert -f vmdk -O qcow2 '$rosoutfileunzipped' '$qcow2file'"
+		_echo_lighcyan " -> # $qcmd"
 		eval "$qcmd" || _abort "Erro $? ao converter vmdk: $qcmd"
 		# remover arquivo original baixado
 		rm -f "$rosoutfile" 2>/dev/null
+		rm -f "$rosoutfileunzipped" 2>/dev/null
 		_echo_lighgreen " -> Mikrotik-$rosver: Nova imagem instalada com sucesso: $rosver"
 	}
 
@@ -720,5 +729,4 @@ fi
 	_eve_fixpermissions
 	_echo_lighpink "* EVE-NG Concluido!"
 	echo
-
 
