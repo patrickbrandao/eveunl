@@ -32,7 +32,9 @@ export PATH="/bin:/sbin:/usr/sbin:/usr/bin:/usr/local/bin:/usr/local/sbin:$PATH"
 		6.37 6.37.1 6.37.2 6.37.3 6.37.4 6.37.5
 		6.38 6.38.1 6.38.2 6.38.3 6.38.4 6.38.5 6.38.6
 		6.39 6.39.1 6.39.2 6.39.3
-		6.40 6.40.1 6.40.2 6.40.3 6.40.4 6.40.5
+		6.40 6.40.1 6.40.2 6.40.3 6.40.4 6.40.5 6.40.6 6.40.7
+		6.41
+		6.42
 	"
 
 	# Versoes do VyOS x86
@@ -312,7 +314,9 @@ export PATH="/bin:/sbin:/usr/sbin:/usr/bin:/usr/local/bin:/usr/local/sbin:$PATH"
 		xl2tpd
 		l2tp-ipsec-vpn
 	    "
-
+	    for pkg in $list; do
+		apt-get -y install $pkg
+	    done
 	}
 
 	# verificar espaco livre, nunca deixar menos que minimo seguro
