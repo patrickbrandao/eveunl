@@ -5,7 +5,7 @@
 # senha => 123456
 # Forma de usar:
 #   sh 99alunos.sh > alunos.sql
-#   mysqldump -peve-ng -u root eve_ng_db < alunos.sql
+#   mysql -peve-ng -u root eve_ng_db < alunos.sql
 
 role=admin
 prefix=aluno
