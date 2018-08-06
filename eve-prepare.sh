@@ -24,17 +24,8 @@ export PATH="/bin:/sbin:/usr/sbin:/usr/bin:/usr/local/bin:/usr/local/sbin:$PATH"
 
 	# Versoes do bugotik suportadas (lista atualizada pelo site)
 	ALL_ROS_VERSIONS="
-		6.32.1 6.32.2
-		6.33 6.33.2 6.33.3 6.33.5 6.33.6
-		6.34 6.34.1 6.34.2 6.34.3 6.34.4 6.34.5 6.34.6
-		6.35 6.35.1 6.35.2 6.35.4
-		6.36 6.36.1 6.36.2 6.36.3 6.36.4
-		6.37 6.37.1 6.37.2 6.37.3 6.37.4 6.37.5
-		6.38 6.38.1 6.38.2 6.38.3 6.38.4 6.38.5 6.38.6
-		6.39 6.39.1 6.39.2 6.39.3
-		6.40 6.40.1 6.40.2 6.40.3 6.40.4 6.40.5 6.40.6 6.40.7 6.40.8
-		6.41
-		6.42 6.42.1 6.42.2 6.42.3
+		6.40.8
+		6.42.6
 	"
 
 	# Versoes do VyOS x86
@@ -314,6 +305,7 @@ export PATH="/bin:/sbin:/usr/sbin:/usr/bin:/usr/local/bin:/usr/local/sbin:$PATH"
 		xl2tpd
 		l2tp-ipsec-vpn
 		strace
+		virt-what
 	    "
 	    for pkg in $list; do
 		apt-get -y install $pkg
@@ -351,8 +343,11 @@ export PATH="/bin:/sbin:/usr/sbin:/usr/bin:/usr/local/bin:/usr/local/sbin:$PATH"
 	_procedure_check_freespace
 
 	# x - sem suporte a vm/kvm/vmx/svm
-	tmp=$(cat /proc/cpuinfo| egrep "vmx|svm")
-	[ "x$tmp" = "x" ] && _abort "O suporte a VMX/AMD-V/VT-X/KVM nao esta ativo."
+	#tmp=$(cat /proc/cpuinfo| egrep "vmx|svm")
+	#[ "x$tmp" = "x" ] && _abort "O suporte a VMX/AMD-V/VT-X/KVM nao esta ativo."
+	
+	# Testa se hÃ¡algum hypervisor habilitado ao invÃs de somente suporte a VMX/AMD-V/VT-X/KVM.
+	[ "x$tmp" = "vmware" -o "x$tmp" = "hyperv" -o "x$tmp" = "xen"  -o "x$tmp" = "kvm"  -o "x$tmp" = "lxc"  ] && _abort "O suporte a VMX/AMD-V/VT-X/KVM nao esta ativo."
 
 	# - remover alias chato
 	{ unalias cp; unalias mv; unalias rm; } 2>/dev/null 1>/dev/null
