@@ -1,10 +1,31 @@
 # eveunl
+
 EVE / Unified Net Labs, scripts, addons, plugins, etc...
 
+Script automatizador interativo. Instalar principais ferramentas no Linux
+e atualiza todo o sistema (pode demorar dependendo da sua banda internacional)
 
-## Criando imagem VyOS para EVE-NG no MACOS
+Como rodar:
+1 - Baixe o EVE-NG Community Edition
+2 - Instale-o e configure-o na rede, garanta o funcionamento dele na Internet
+3 - Execute:
 
-###	Gerando arquivo VDI no VirtualBox
+```
+
+  wget https://raw.githubusercontent.com/patrickbrandao/eveunl/master/eve-prepare.sh -O /root/eve-prepare.sh
+
+  chmod +x /root/eve-prepare.sh
+
+  /root/eve-prepare.sh
+
+```
+
+4 - Pronto.
+
+
+### Criando imagem VyOS para EVE-NG no MACOS
+
+####	Gerando arquivo VDI no VirtualBox
 
 1 - Crie uma maquina virtual no VirtualBox com apenas 1 interface de rede
 
