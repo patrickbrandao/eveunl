@@ -517,6 +517,43 @@ if [ "x$INST_MK" = "x1" ]; then
 		_echo_lighgreen " -> Mikrotik-$rosver: Nova imagem instalada com sucesso: $rosver"
 	}
 
+	# Detectar ultima versao long-term (lt), ultima versao stable (le) e ultima beta (lb)
+	lastlt=""; lastle=""; lastlb=""
+	wget https://mikrotik.com/download/changelogs -O /tmp/mikrotik-changelogs.html && {
+		# Filtrar ultima versao Long-term: Long-term release tree
+		v=$(egrep -n 'Long-term release tree' /tmp/mikrotik-changelogs.html | head -2 | \
+			tail -n1 | cut -f1 -d: | \
+			while read seclineid; do \
+				egrep -n . /tmp/mikrotik-changelogs.html | \
+				egrep "^$seclineid:" -A 20 | \
+				grep Release
+			done | sed 's#Release.#|#g' | cut -f2 -d'|' | cut -f1 -d'<'
+		)
+		echo $v | egrep '^[0-9]+\.[0-9]+\.[0-9]+' >/dev/null && lastlt="$v"
+		# Filtrar ultima versao Stable: Stable release tree
+		v=$(egrep -n 'Stable release tree' /tmp/mikrotik-changelogs.html | head -2 | \
+			tail -n1 | cut -f1 -d: | \
+			while read seclineid; do \
+				egrep -n . /tmp/mikrotik-changelogs.html | \
+				egrep "^$seclineid:" -A 20 | \
+				grep Release
+			done | sed 's#Release.#|#g' | cut -f2 -d'|' | cut -f1 -d'<'
+		)
+		echo $v | egrep '^[0-9]+\.[0-9]+\.[0-9]+' >/dev/null && lastle="$v"
+		# Filtrar ultima versao beta: Testing release tree
+		v=$(egrep -n 'Testing release tree' /tmp/mikrotik-changelogs.html | head -2 | \
+			tail -n1 | cut -f1 -d: | \
+			while read seclineid; do \
+				egrep -n . /tmp/mikrotik-changelogs.html | \
+				egrep "^$seclineid:" -A 20 | \
+				grep Release
+			done | sed 's#Release.#|#g' | cut -f2 -d'|' | cut -f1 -d'<'
+		)
+		echo $v | egrep '^[0-9]+\.[0-9]+' >/dev/null && lastlb="$v"
+	}
+	# Agregar versoes descobertas na lista
+	ALL_ROS_VERSIONS="$ALL_ROS_VERSIONS $lastlt $lastle $lastlb"
+
 	# Instalar todas as versoes
 	for rosv in $ALL_ROS_VERSIONS; do _install_ros_version "$rosv"; _procedure_check_freespace; done
 
