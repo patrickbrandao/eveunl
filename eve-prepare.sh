@@ -305,6 +305,7 @@ export PATH="/bin:/sbin:/usr/sbin:/usr/bin:/usr/local/bin:/usr/local/sbin:$PATH"
 		xl2tpd
 		l2tp-ipsec-vpn
 		strace
+		virt-what
 	    "
 	    for pkg in $list; do
 		
@@ -345,7 +346,7 @@ export PATH="/bin:/sbin:/usr/sbin:/usr/bin:/usr/local/bin:/usr/local/sbin:$PATH"
 	_procedure_check_freespace
 
 	# x - sem suporte a vm/kvm/vmx/svm
-	tmp=$(cat /proc/cpuinfo| egrep "vmx|svm")
+	tmp=$(cat /proc/cpuinfo| egrep "vmx|svm|kvm|lxc")
 	[ "x$tmp" = "x" ] && _abort "O suporte a VMX/AMD-V/VT-X/KVM nao esta ativo."
 
 	# - remover alias chato
