@@ -30,7 +30,8 @@ export PATH="/bin:/sbin:/usr/sbin:/usr/bin:/usr/local/bin:/usr/local/sbin:$PATH"
 
 	# Versoes do VyOS x86
 	ALL_VYOS_VERSIONS="
-		1.2.3
+		1.1.7-amd64
+		1.2.3-amd64
 	"
 
 	# Diretorio de downloads
