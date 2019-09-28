@@ -108,4 +108,20 @@ e atualiza todo o sistema (pode demorar dependendo da sua banda internacional)
   /opt/unetlab/wrappers/unl_wrapper -a fixpermissions
 ``` 
 
-11 - Pronto, adicione a imagem em algum lab e teste!
+11 - Adicione a imagem em algum lab e teste.
+
+12 - O MAC usado no virtualbox ficou associado a eth0, e não
+existe na copia gerada no EVE, entre no VyOS e execute:
+
+``` 
+id=0 
+ip link show | egrep 'link.ether' | awk '{print $2}' | sort -n | while read mac; do
+ eth="eth$id" 
+ echo "# $eth = $mac"
+ id=$(($id+1))
+ echo "set interfaces ethernet $eth hw-id '$mac'"
+done
+``` 
+
+Copie a saida do comando acima e cole dentro da sessao "configure", de commit, save e reinicie o VyOS
+
