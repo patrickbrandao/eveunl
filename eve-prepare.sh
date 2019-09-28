@@ -298,6 +298,7 @@ export PATH="/bin:/sbin:/usr/sbin:/usr/bin:/usr/local/bin:/usr/local/sbin:$PATH"
 		mtr-tiny
 		whois
 		pptp
+		nmap
 		snmp
 		links
 		tcpdump
@@ -306,12 +307,17 @@ export PATH="/bin:/sbin:/usr/sbin:/usr/bin:/usr/local/bin:/usr/local/sbin:$PATH"
 		l2tp-ipsec-vpn
 		strace
 		virt-what
+		bind9utils
+		dnsutils
+		conntrack
+		openvpn
+		vtun
+		psmisc
+		quagga
+		mc
 	    "
 	    for pkg in $list; do
-		
-		
-		
-		-y install $pkg
+		apt-get -y install $pkg
 	    done
 	}
 
@@ -323,18 +329,10 @@ export PATH="/bin:/sbin:/usr/sbin:/usr/bin:/usr/local/bin:/usr/local/sbin:$PATH"
 		[ "$freespace" -lt "$MIN_FREE_SPACE" ] && _abort "Espaco livre em disco inferior ao minimo de seguranda: $MIN_FREE_SPACE"
 	}
 
-
-
-
 	# Ajustar permissoes do UNL/EVE
 	_eve_fixpermissions(){ _echo_lighpink "> Ajustando permissoes UNL/EVE-NG"; /opt/unetlab/wrappers/unl_wrapper -a fixpermissions 2>/dev/null 1>/dev/null; }
 
-
-
-
 	# Funcoes 05
-
-
 
 # Variaveis
 	today=$(date '+%Y%m%d')
@@ -391,6 +389,8 @@ export PATH="/bin:/sbin:/usr/sbin:/usr/bin:/usr/local/bin:/usr/local/sbin:$PATH"
 	# 0 - timezone
 	tzflag="/tmp/tzdata-done"
 	if [ ! -f "$tzflag" ]; then
+	        timedatectl set-timezone America/Sao_Paulo 2>/dev/null
+		ntpdate 200.160.0.8 2>/dev/null
 		dpkg-reconfigure tzdata && touch $tzflag
 	fi
 
@@ -433,8 +433,8 @@ export PATH="/bin:/sbin:/usr/sbin:/usr/bin:/usr/local/bin:/usr/local/sbin:$PATH"
 	upgflag="/tmp/upgrade-done-$today"
 	if [ ! -f "$upgflag" ]; then
 		_echo_lighgreen "> Atualizando pacotes"
-    	    apt-get -y upgrade && touch $upgflag
-    	    [ -f "$upgflag" ] && apt -y autoremove
+		apt-get -y upgrade && touch $upgflag
+		[ -f "$upgflag" ] && apt -y autoremove
 	fi
 	[ -f "$upgflag" ] || _abort "Falhou ao realizar UPGRADE de pacotes, tente novamente"
 	[ -f "$upgflag" ] && _echo_lighgreen "> Atualizacao de pacotes OK"
