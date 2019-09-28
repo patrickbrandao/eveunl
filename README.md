@@ -7,8 +7,11 @@ EVE / Unified Net Labs, scripts, addons, plugins, etc...
 ###	Gerando arquivo VDI no VirtualBox
 
 1 - Crie uma maquina virtual no VirtualBox com apenas 1 interface de rede
+
 2 - De boot pela ISO do VyOS
+
 3 - Ative servico basico:
+
 ```
   configure
   set service ssh
