@@ -23,7 +23,23 @@ e atualiza todo o sistema (pode demorar dependendo da sua banda internacional)
 
 ```
 
-4 - Pronto.
+4 - Ative o IOURC antes de criar ou executar qualquer roteador Cisco IOL:
+
+```
+  cd /root/
+  wget https://raw.githubusercontent.com/patrickbrandao/eveunl/master/CiscoKeyGen.py -O /root/CiscoKeyGen.py
+  chmod +x /root/CiscoKeyGen.py
+  
+  # Execute:
+  /root/CiscoKeyGen.py
+  
+  # Observe a saida na tela, copie os comandos que começam com:
+  # "echo -e" e "grep -q"
+  # e cole-os na linha de comando
+
+```
+
+5 - Pronto. Pode usar normalmente.
 
 
 ### Criando imagem VyOS para EVE-NG no MACOS
