@@ -5,9 +5,12 @@ EVE / Unified Net Labs, scripts, addons, plugins, etc...
 Script automatizador interativo. Instalar principais ferramentas no Linux
 e atualiza todo o sistema (pode demorar dependendo da sua banda internacional)
 
-Como rodar:
+### Como rodar:
+
 1 - Baixe o EVE-NG Community Edition
+
 2 - Instale-o e configure-o na rede, garanta o funcionamento dele na Internet
+
 3 - Execute:
 
 ```
