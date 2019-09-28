@@ -10,9 +10,10 @@ EVE / Unified Net Labs, scripts, addons, plugins, etc...
 2 - De boot pela ISO do VyOS
 3 - Ative servico basico:
 ```
-		configure
-		set service ssh
-		commit; save
+  configure
+  set service ssh
+  commit; save
+  exit
 ``` 
 
 4 - Instale o VyOS:
