@@ -47,7 +47,7 @@ _abort(){ echo; echo "ABORTADO: $1"; echo; exit $2; }
 _abort_empty(){ [ "x$1" = "x" ] && _abort "$2" $3; }
 _help(){
 	echo
-	echo "vtunctl (stop|start|restart|list|add|test|help) [options]"
+	echo "vtunctl (stop|start|restart|list|add|test|delete|help) [options]"
 	echo
 	echo "Criar cliente vtun:"
 	echo "  add -n VNAME -s SERVER -l LOCALIP -r PEERIP -p PORT -x SECRET"
@@ -298,12 +298,16 @@ _get_free_tundev(){
 	while [ 0 ]; do
 		#echo "1=[$1] 2=[$2] 3=[$3] 4=[$4] 5=[$5] 6=[$6] 7=[$7] 8=[$8]"
 		# Ajuda
-		if [ "$1" = "-h" -o "$1" = "--h" -o "$1" = "--help" -o "$1" = "help" ]; then _help; exit 0; fi
-		# comando
-		if [ "$1" = "stop" -o "$1" = "start" -o "$1" = "list" -o "$1" = "restart" -o "$1" = "add" -o "$1" = "delete" -o "$1" = "test" ]; then
-			CMD="$1"; shift; continue; fi
+		if [ "$1" = "-h" -o "$1" = "--h" -o "$1" = "--help" -o "$1" = "help" ]; then
+			_help; exit 0;
+		# Comando
+		elif [ "$1" = "stop" -o "$1" = "start" -o "$1" = "restart" ]; then
+			CMD="$1"; shift; continue
+		# Controle
+		elif [ "$1" = "list" -o "$1" = "add" -o "$1" = "delete" -o "$1" = "test" ]; then
+			CMD="$1"; shift; continue
 		# Nome do cliente
-		if [ "$1" = "-n" -o "$1" = "-name" -o "$1" = "--name" ]; then
+		elif [ "$1" = "-n" -o "$1" = "-name" -o "$1" = "--name" ]; then
 			_empty_help "$2" 11; NAME="$2"; shift 2; continue
 		# Porta do servidor
 		elif [ "$1" = "-port" -o "$1" = "--port" -o "$1" = "-p" ]; then
@@ -549,6 +553,25 @@ fi
 #----------------------------------------------------------------------------------------------------------
 if [ "$CMD" = "list" ]; then _vpn_client_list; exit 0; fi
 
+# Deletar e parar cliente
+#----------------------------------------------------------------------------------------------------------
+if [ "$CMD" = "delete" ]; then 
+	_abort_empty "$NAME" "[DELETE] Informe o nome da VPN" 51
+	_cfg="$CNFDIR/client-$NAME.conf"
+	[ -f "$_cfg" ] || _abort "[DELETE] Cliente nao configurado [$NAME] cfg [$_cfg]"
+
+	# Parar
+	XNAME="vtund-$NAME"
+	VTUNLINK="/var/run/$XNAME"
+	killall "$XNAME"
+
+	# Remover
+	rm -f "$_cfg" 2>/dev/null
+
+	exit
+fi
+
+
 # Parar cliente
 #----------------------------------------------------------------------------------------------------------
 if [ "$CMD" = "stop" ]; then 
@@ -572,8 +595,10 @@ if [ "$CMD" = "restart" ]; then
 fi
 
 
+# Nenhum comando capturado, exibir ajuda
+_help
+exit 1
 
-exit 0
 
 # Exemplos:
 #==========================================================================================================
