@@ -260,8 +260,8 @@ _get_free_tundev(){
 	[ "x$tunid" = "x" ] && tunid="tun0"
 	cd $CNFDIR || { echo "$tunid"; return; }
 	# pegar tudo!
-	tlist1=$(cat * | grep device | awk '{print $2}'| grep tun | sed 's#[^ntu0-9]##g')
-	tlist2=$(cat * | grep '#@DEVICE=' | cut -f2 -d= | grep tun | sed 's#[^ntu0-9]##g')
+	tlist1=$(cat * 2>/dev/null | grep device | awk '{print $2}'| grep tun | sed 's#[^ntu0-9]##g')
+	tlist2=$(cat * 2>/dev/null | grep '#@DEVICE=' | cut -f2 -d= | grep tun | sed 's#[^ntu0-9]##g')
 	tlist="$tlist1 $tlist2"
 	# verificar se o nome desejado pode ser utilizado
 	dfound=0
@@ -281,16 +281,6 @@ _get_free_tundev(){
 	done
 	echo "$tunid"
 }
-# echo "teste 1: _get_free_tundev"
-# _get_free_tundev
-# echo "teste 2: _get_free_tundev tun0"
-# _get_free_tundev tun0
-# echo "teste 3: _get_free_tundev tun1"
-# _get_free_tundev tun1
-# echo "teste 4: _get_free_tundev tun100"
-# _get_free_tundev tun100
-# echo "teste 5: _get_free_tundev tun9"
-# _get_free_tundev tun9
 
 # Coletar argumentos:
 #==========================================================================================================
@@ -673,10 +663,17 @@ chmod +x /root/vtunctl.sh /usr/sbin/vtunctl
 #
 vtunctl add -n evevpn02 -s 90.90.90.90 -l 10.247.102.2 -r 10.247.102.1 -x thebestvpn -c yes -z -p 7100 -d eve02
 
+# Listar VPNs:
+vtunctl list
 
+# Inicie a VPN:
+vtunctl start evevpn02
 
+# Parar a VPN:
+vtunctl stop evevpn02
 
-
+# Parar e Deletar a VPN:
+vtunctl delete evevpn02
 
 
 
