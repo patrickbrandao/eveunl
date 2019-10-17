@@ -29,6 +29,7 @@ CMD=""
 SERVER=""
 PEERIP=""
 LOCALIP=""
+LOCAL6IP=""
 PORT=7100
 PROTO=tcp
 SECRET=thebestvpn
@@ -38,6 +39,9 @@ KEEPALIVE="yes"
 PERSIST="yes"
 MODE=tun
 DEVICE=tun0
+NAT=no
+IPV4ROUTES=""
+IPV6ROUTES=""
 
 DEBUG=0
 
@@ -53,19 +57,23 @@ _help(){
 	echo "  add -n VNAME -s SERVER -l LOCALIP -r PEERIP -p PORT -x SECRET"
 	echo
 	echo "Argumentos:"
-	echo "  -n VNAME    : Nome da VPN"
-	echo "  -s SERVER   : IP do servidor"
-	echo "  -m MODE     : Modo da VPN (l2/ether, l3/tun, pipe, tty), padrao l3/tun"
-	echo "  -l LOCALIP  : IP do tunel local"
-	echo "  -r PEERIP   : IP do tunel remoto"
-	echo "  -x SECRET   : Senha de criptografia"
-	echo "  -p PORT     : Porta do servidor"
-	echo "  -c CRYPT    : metodo de criptografia [no, yes, ...]"
-	echo "  -d DEVICE  : propor nome de interface de rede, padrao tunN"
-	echo "  -Z ZIPMODE  : ativar compressao e escolher algo (zlib, lzo,zlib:N, lzo:N)"
-	echo "  -z          : ativar compressao"
-	echo "  -K          : desativar keepalive"
-	echo "  -P          : desativar persistencia"
+	echo "  -n VNAME      : Nome da VPN"
+	echo "  -s SERVER     : IP do servidor"
+	echo "  -m MODE       : Modo da VPN (l2/ether, l3/tun, pipe, tty), padrao l3/tun"
+	echo "  -l LOCALIP    : IPv4 do tunel local"
+	echo "  -r PEERIP     : IPv4 do tunel remoto"
+	echo "  -L LOCALIPv6  : IPv6 do tunel local"
+	echo "  -x SECRET     : Senha de criptografia"
+	echo "  -p PORT       : Porta do servidor"
+	echo "  -c CRYPT      : metodo de criptografia [no, yes, ...]"
+	echo "  -i DEVICE     : propor nome de interface de rede, padrao tunN"
+	echo "  -d ipv4routes : rotas IPv4 a apontar para a vpn, prefixos separados por virgula"
+	echo "  -D ipv6routes : rotas IPv6 a apontar para a vpn, prefixos separados por virgula"
+	echo "  -Z ZIPMODE    : ativar compressao e escolher algo (zlib, lzo,zlib:N, lzo:N)"
+	echo "  -N            : ativar NAT MASQUERADE para destinos pela VPN"
+	echo "  -z            : ativar compressao"
+	echo "  -K            : desativar keepalive"
+	echo "  -P            : desativar persistencia"
 	echo
 	echo "Controlar cliente:"
 	echo "  stop     VNAME      : parar vpn cliente"
@@ -193,6 +201,7 @@ _print_cfg_info(){
 	_name=$(_cfg_get_var "$_cfg" "NAME")
 	_localip=$(_cfg_get_var "$_cfg" "LOCALIP")
 	_peerip=$(_cfg_get_var "$_cfg" "PEERIP")
+	_local6ip=$(_cfg_get_var "$_cfg" "LOCAL6IP")
 	_mode=$(_cfg_get_var "$_cfg" "MODE" "$MODE")
 	_secret=$(_cfg_get_var "$_cfg" "SECRET" "$SECRET")
 	_crypt=$(_cfg_get_var "$_cfg" "CRYPT" "$CRYPT")
@@ -202,12 +211,19 @@ _print_cfg_info(){
 	_port=$(_cfg_get_var "$_cfg" "PORT" "$PORT")
 	_proto=$(_cfg_get_var "$_cfg" "PROTO" "$PROTO")
 	_device=$(_cfg_get_var "$_cfg" "DEVICE" "$DEVICE")
+	_ipv4routes=$(_cfg_get_var "$_cfg" "IPV4ROUTES" "$IPV4ROUTES")
+	_ipv6routes=$(_cfg_get_var "$_cfg" "IPV6ROUTES" "$IPV6ROUTES")
 	echo "* $_name"
 	echo "   > config-path...: $_cfg"
 	echo "   > server........: $_server $_proto port $_port"
 	echo "   > tunnel........: $_mode $_device ~ $_localip <===> $_peerip"
+	[ "x$_local6ip" = "x" ] || \
+	echo "                     IPv6: $_local6ip"
 	echo "   > encrypt.......: $_crypt"
 	echo "   > options.......: compress=$_compress, keepalive=$_keepalive, persistent=$_persistent"
+	echo "   > firewall......: nat=$_nat"
+	echo "   > ipv4 routes...: [$_ipv4routes]"
+	echo "   > ipv6 routes...: [$_ipv6routes]"
 }
 _vpn_status(){
 	_cfg="$1"
@@ -223,7 +239,7 @@ _vpn_status(){
 		return 1
 	}
 	# 2 - obter rota para o ip remoto
-	devpeer=$(ip -o ro get "$_peerip" | sed 's#dev.#|#g;s#.src.#|#g; s#\ ##g' | cut -f2 -d'|' | grep tun)
+	devpeer=$(ip -o ro get "$_peerip" | sed 's#dev.#|#g;s#.src.#|#g; s#\ ##g' | cut -f2 -d'|')
 	[ "x$devpeer" = "x" ] && {
 		echo "Status: VPN DOWN, peer ip down: $_peerip"
 		return 2
@@ -260,8 +276,8 @@ _get_free_tundev(){
 	[ "x$tunid" = "x" ] && tunid="tun0"
 	cd $CNFDIR || { echo "$tunid"; return; }
 	# pegar tudo!
-	tlist1=$(cat * 2>/dev/null | grep device | awk '{print $2}'| grep tun | sed 's#[^ntu0-9]##g')
-	tlist2=$(cat * 2>/dev/null | grep '#@DEVICE=' | cut -f2 -d= | grep tun | sed 's#[^ntu0-9]##g')
+	tlist1=$(cat * 2>/dev/null | grep device | awk '{print $2}'| sed 's#[^ntu0-9]##g')
+	tlist2=$(cat * 2>/dev/null | grep '#@DEVICE=' | cut -f2 -d= | sed 's#[^ntu0-9]##g')
 	tlist="$tlist1 $tlist2"
 	# verificar se o nome desejado pode ser utilizado
 	dfound=0
@@ -291,11 +307,26 @@ _get_free_tundev(){
 		if [ "$1" = "-h" -o "$1" = "--h" -o "$1" = "--help" -o "$1" = "help" ]; then
 			_help; exit 0;
 		# Comando
-		elif [ "$1" = "stop" -o "$1" = "start" -o "$1" = "restart" ]; then
-			CMD="$1"; shift; continue
+		elif [ "$1" = "restart" -o "$1" = "reboot" -o "$1" = "reconnect" -o "$1" = "recon" -o "$1" = "refresh" ]; then
+			CMD="restart"; shift; continue
 		# Controle
-		elif [ "$1" = "list" -o "$1" = "add" -o "$1" = "delete" -o "$1" = "test" ]; then
-			CMD="$1"; shift; continue
+		elif [ "$1" = "start" -o "$1" = "star" -o "$1" = "sta" -o "$1" = "play" -o "$1" = "connect" ]; then
+			CMD="start"; shift; continue
+		# Controle
+		elif [ "$1" = "list" -o "$1" = "lis" -o "$1" = "ls" -o "$1" = "li" ]; then
+			CMD="list"; shift; continue
+		# Controle
+		elif [ "$1" = "add" -o "$1" = "new" -o "$1" = "create" ]; then
+			CMD="add"; shift; continue
+		# Controle
+		elif [ "$1" = "delete" -o "$1" = "rm" -o "$1" = "del" ]; then
+			CMD="delete"; shift; continue
+		# Controle
+		elif [ "$1" = "stop" -o "$1" = "kill" -o "$1" = "down" ]; then
+			CMD="stop"; shift; continue
+		# Controle
+		elif [ "$1" = "test" -o "$1" = "tes" -o "$1" = "tst" -o "$1" = "status" ]; then
+			CMD="test"; shift; continue
 		# Nome do cliente
 		elif [ "$1" = "-n" -o "$1" = "-name" -o "$1" = "--name" ]; then
 			_empty_help "$2" 11; NAME="$2"; shift 2; continue
@@ -309,8 +340,17 @@ _get_free_tundev(){
 		elif [ "$1" = "-crypt" -o "$1" = "--crypt" -o "$1" = "-c" ]; then
 			_empty_help "$2" 14; CRYPT=$(_filter_crypt_opt "$2"); shift 2; continue
 		# Nome de interface de rede
-		elif [ "$1" = "-d" -o "$1" = "--dev" -o "$1" = "--devname" -o "$1" = "--dev-name" -o "$1" = "--device" ]; then
+		elif [ "$1" = "-i" -o "$1" = "--dev" -o "$1" = "--devname" -o "$1" = "--dev-name" -o "$1" = "--device" ]; then
 			_empty_help "$2" 14; DEVICE="$2"; shift 2; continue
+		# IPv4 Routes
+		elif [ "$1" = "-d" -o "$1" = "--route" -o "$1" = "--route4" -o "$1" = "--routes" -o "$1" = "--ipv4-routes" ]; then
+			_empty_help "$2" 24; IPV4ROUTES="$2"; shift 2; continue
+		# IPv6 Routes
+		elif [ "$1" = "-D" -o "$1" = "--route6" -o "$1" = "--routes6" -o "$1" = "--ipv6-routes" ]; then
+			_empty_help "$2" 24; IPV6ROUTES="$2"; shift 2; continue
+		# NAT
+		elif [ "$1" = "-N" -o "$1" = "--nat" -o "$1" = "-nat" ]; then
+			NAT="yes"; shift; continue
 		# UDP
 		elif [ "$1" = "-u" -o "$1" = "--udp" -o "$1" = "-U" ]; then
 			PROTO="udp"; shift; continue
@@ -332,12 +372,16 @@ _get_free_tundev(){
 		# IP do servidor
 		elif [ "$1" = "-srv" -o "$1" = "--server" -o "$1" = "-s" ]; then
 			_empty_help "$2" 15; SERVER="$2"; shift 2; continue
+
 		# IP local no tunel
 		elif [ "$1" = "-local" -o "$1" = "--local" -o "$1" = "-l" ]; then
 			_empty_help "$2" 16; LOCALIP="$2"; shift 2; continue
 		# IP remoto do tunel
 		elif [ "$1" = "-r" -o "$1" = "--remote" -o "$1" = "-remote" -o "$1" = "-peer" -o "$1" = "--peer" ]; then
 			_empty_help "$2" 17; PEERIP="$2"; shift 2; continue
+		# IPv6 local no tunel
+		elif [ "$1" = "-local6" -o "$1" = "--local6" -o "$1" = "-L" ]; then
+			_empty_help "$2" 16; LOCAL6IP="$2"; shift 2; continue
 		# Senha de criptografia
 		elif [ "$1" = "-x" -o "$1" = "--secret" -o "$1" = "-secret" -o "$1" = "-pass" -o "$1" = "--pass" -o "$1" = "--password" ]; then
 			_empty_help "$2" 18; SECRET="$2"; shift 2; continue
@@ -378,17 +422,21 @@ _get_free_tundev(){
 	echo
 	echo "  NAME........: $NAME"
 	echo "  MODE........: $MODE"
+	echo "  SERVER......: $SERVER"
+	echo "  PROTO.......: $PROTO"
+	echo "  PORT........: $PORT"
 	echo "  DEVICE......: $DEVICE"
 	echo "  CRYPT.......: $CRYPT"
 	echo "  SECRET......: $SECRET"
 	echo "  COMPRESS....: $COMPRESS"
 	echo "  KEEPALIVE...: $KEEPALIVE"
 	echo "  PERSIST.....: $PERSIST"
-	echo "  SERVER......: $SERVER"
 	echo "  PEERIP......: $PEERIP"
 	echo "  LOCALIP.....: $LOCALIP"
-	echo "  PORT........: $PORT"
-	echo "  PROTO.......: $PROTO"
+	echo "  LOCAL6IP....: $LOCAL6IP"
+	echo "  NAT.........: $NAT"
+	echo "  IPV4ROUTES..: $IPV4ROUTES"
+	echo "  IPV6ROUTES..: $IPV6ROUTES"
 	echo
 }
 
@@ -397,7 +445,7 @@ _setup
 
 # Adicionar config cliente
 #----------------------------------------------------------------------------------------------------------
-div="#--------------------------------------------------------"
+
 if [ "$CMD" = "add" ]; then
 	_abort_empty "$NAME" "[ADD] Informe o nome da VPN" 51
 	_abort_empty "$SERVER" "[ADD] Informe o IP/FQDN do servidor" 52
@@ -422,6 +470,7 @@ if [ "$CMD" = "add" ]; then
 		echo "#@NAME=$NAME"
 		echo "#@LOCALIP=$LOCALIP"
 		echo "#@PEERIP=$PEERIP"
+		echo "#@LOCAL6IP=$LOCAL6IP"
 		echo "#@MODE=$MODE"
 		echo "#@SECRET=$SECRET"
 		echo "#@CRYPT=$CRYPT"
@@ -431,6 +480,9 @@ if [ "$CMD" = "add" ]; then
 		echo "#@PORT=$PORT"
 		echo "#@PROTO=$PROTO"
 		echo "#@DEVICE=$DEVICE"
+		echo "#@NAT=$NAT"
+		echo "#@IPV4ROUTES=$IPV4ROUTES"
+		echo "#@IPV6ROUTES=$IPV6ROUTES"
 		echo
 		echo "options {"
 		echo "  timeout   60;"
@@ -456,8 +508,35 @@ if [ "$CMD" = "add" ]; then
 		echo "  passwd $SECRET;"
 		[ "x$DEVICE" = "x" ] || echo "  device $DEVICE;"
 		echo "  up {"
+		# Atribuir IPv4
 		echo "    ip \"addr add $LOCALIP/32 peer $PEERIP dev %%\";"
+		# Atribuir IPv6
+		[ "x$LOCAL6IP" = "x" ] || {
+			_local6ip="$LOCAL6IP"
+			echo "$_local6ip" | egrep '/' >/dev/null || _local6ip="$_local6ip/128"
+			echo "    ip \"-6 addr add $_local6ip dev %%\";"
+		}
+		# Ativar interface
 		echo "    ip \"link set up dev %%\";"
+		# Subir rotas IPv4
+		_routes4=$(echo $IPV4ROUTES | sed 's#,# #g')
+		[ "x$_routes4" = "x" ] || {
+			for _r4 in $_routes4; do
+				echo "    ip \" route add $_r4 dev %%\";"
+			done
+		}
+		# Subir rotas IPv6
+		_routes6=$(echo $IPV6ROUTES | sed 's#,# #g')
+		[ "x$_routes6" = "x" ] || {
+			for _r6 in $_routes6; do
+				echo "    ip \"-6 route add $_r6 dev %%\";"
+			done
+		}
+		# Ativar NAT IPv4
+		[ "$NAT" = "yes" ] && echo "    firewall \"-t nat -I POSTROUTING -o %% -j MASQUERADE\";"
+		echo "  };"
+		echo "  down {"
+		[ "$NAT" = "yes" ] && echo "    firewall \"-t nat -D POSTROUTING -o %% -j MASQUERADE\";"
 		echo "  };"
 		echo "}"
 		echo
@@ -553,7 +632,7 @@ if [ "$CMD" = "delete" ]; then
 	# Parar
 	XNAME="vtund-$NAME"
 	VTUNLINK="/var/run/$XNAME"
-	killall "$XNAME"
+	killall "$XNAME" 2>/dev/null
 
 	# Remover
 	rm -f "$_cfg" 2>/dev/null
@@ -571,7 +650,7 @@ if [ "$CMD" = "stop" ]; then
 
 	XNAME="vtund-$NAME"
 	VTUNLINK="/var/run/$XNAME"
-	killall "$XNAME"
+	killall "$XNAME" 2>/dev/null
 
 	exit
 fi
@@ -661,7 +740,7 @@ chmod +x /root/vtunctl.sh /usr/sbin/vtunctl
 #  - no exemplo 90.90.90.90 deve ser trocado pelo ip PUBLICO do servidor
 #  - aceita redirecionamento de portas de um roteador com ip PUBLICO para um servidor ou VPS/Docker
 #
-vtunctl add -n evevpn02 -s 90.90.90.90 -l 10.247.102.2 -r 10.247.102.1 -x thebestvpn -c yes -z -p 7100 -d eve02
+vtunctl add -n evevpn02 -s 90.90.90.90 -l 10.247.102.2 -r 10.247.102.1 -x thebestvpn -c yes -z -p 7100 -i eve02
 
 # Listar VPNs:
 vtunctl list
