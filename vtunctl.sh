@@ -119,6 +119,10 @@ _install(){
 	for pkg in $pkglist; do
 		apt-get -y install $pkg
 	done
+	# self install
+	[ "$SELFSCRIPT" = "/usr/sbin/vtunctl" ] || cp -f $SELFSCRIPT /usr/sbin/vtunctl 2>/dev/null
+	chmod +x /usr/sbin/vtunctl
+	chmod +x "$SELFSCRIPT"
 	echo "INSTALL: done."
 }
 _setup(){
@@ -612,8 +616,15 @@ if [ "$CMD" = "add" ]; then
 		echo "  up {"
 		# Atribuir IPv4
 		# - modo eth
-		[ "$MODE" = "ether" ] && \
-		echo "    ip \"addr add $LOCALIP brd + dev %%\";"
+		if [ "$MODE" = "ether" ]; then
+			if [ "x$BRIDGE" = "x" ]; then
+				# modo sem bridge: ip no tunel
+				echo "    ip \"addr add $LOCALIP brd + dev %%\";"
+			else
+				# modo com bridge: ip na bridge
+				[ "x$BRIDGE" = "x" ] || echo "    ip \"addr add $LOCALIP brd + dev $BRIDGE\";"
+			fi
+		fi		
 		# - modo tun, precisa de ip local
 		[ "$MODE" = "tun" ] && \
 			echo "    ip \"addr add $LOCALIP peer $PEERIP dev %%\";"
