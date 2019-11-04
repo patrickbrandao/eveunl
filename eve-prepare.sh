@@ -141,6 +141,30 @@ export PATH="/bin:/sbin:/usr/sbin:/usr/bin:/usr/local/bin:/usr/local/sbin:$PATH"
 	_abort(){ echo; _echo_lighred "** ABORTADO: $1"; echo; exit $2; }
 
 
+	_iol_gen_iourc(){
+		# baixar script
+		[ -f /root/CiscoKeyGen.py ] || {
+			wget --no-check-certificate \
+			https://raw.githubusercontent.com/patrickbrandao/eveunl/master/CiscoKeyGen.py \
+				-O /root/CiscoKeyGen.py
+			chmod +x /root/CiscoKeyGen.py
+		}
+		# Gerar IOURC
+		/root/CiscoKeyGen.py > /tmp/iourc
+		cat /tmp/iourc | egrep -A1 '^\[license]' > /tmp/.iourc
+		cp /tmp/.iourc /root/.iourc
+		cp /tmp/.iourc /opt/unetlab/.iourc
+		cp /tmp/.iourc /opt/unetlab/addons/.iourc
+		cp /tmp/.iourc /opt/unetlab/addons/iol/.iourc
+		cp /tmp/.iourc /opt/unetlab/addons/iol/bin/.iourc
+		cp /tmp/.iourc /opt/unetlab/addons/iol/lib/.iourc
+
+		# Adicionar hosts para limitar acesso
+		grep -q -F '127.0.0.1 xml.cisco.com' /etc/hosts || echo '127.0.0.1 xml.cisco.com' >> /etc/hosts
+
+		true
+	}
+
 	# obter arquivo via HTTP
 	# - obter md5 de um arquivo
 	_getmd5(){ md5sum "$1" | awk '{print $1}'; }
@@ -583,7 +607,9 @@ if [ "x$INST_IOL" = "x1" ]; then
 		touch "$IOLNETMAP" 2>/dev/null || _echo_lighyellow "Cisco-IOL: Erro ao criar NETMAP [$IOLNETMAP]"
 
 	# Licenca IOU
-	# falta
+	echo
+	_echo_lighcyan "> Ativando IOURC"
+	_iol_gen_iourc
 
 	_echo_lighcyan "> Concluido: Imagens Cisco-IOL"
 	echo
