@@ -416,9 +416,8 @@ export PATH="/bin:/sbin:/usr/sbin:/usr/bin:/usr/local/bin:/usr/local/sbin:$PATH"
 	if [ ! -f "$tzflag" ]; then
 	        timedatectl set-timezone America/Sao_Paulo 2>/dev/null
 		ntpdate 200.160.0.8 2>/dev/null
-		dpkg-reconfigure tzdata && touch $tzflag
+		touch $tzflag
 	fi
-
 
 	# - testar INTERNET
 	_echo_lighgreen "> Testando acesso a internet"
