@@ -152,13 +152,22 @@ export PATH="/bin:/sbin:/usr/sbin:/usr/bin:/usr/local/bin:/usr/local/sbin:$PATH"
 		# Gerar IOURC
 		/root/CiscoKeyGen.py > /tmp/iourc
 		cat /tmp/iourc | egrep -A1 '^\[license]' > /tmp/.iourc
-		cp /tmp/.iourc /root/.iourc
-		cp /tmp/.iourc /opt/unetlab/.iourc
-		cp /tmp/.iourc /opt/unetlab/addons/.iourc
-		cp /tmp/.iourc /opt/unetlab/addons/iol/.iourc
-		cp /tmp/.iourc /opt/unetlab/addons/iol/bin/.iourc
-		cp /tmp/.iourc /opt/unetlab/addons/iol/lib/.iourc
-
+		iourclist="
+			/root/.iourc
+			/opt/unetlab/.iourc
+			/opt/unetlab/addons/.iourc
+			/opt/unetlab/addons/iol/.iourc
+			/opt/unetlab/addons/iol/bin/.iourc
+			/opt/unetlab/addons/iol/lib/.iourc
+			/root/iourc
+			/opt/unetlab/iourc
+			/opt/unetlab/addons/iourc
+			/opt/unetlab/addons/iol/iourc
+			/opt/unetlab/addons/iol/bin/iourc
+			/opt/unetlab/addons/iol/lib/iourc
+		"
+		# Espalhar o IOURC pelo EVE
+		for dst in $iourclist; do cp /tmp/.iourc $dst; done 2>/dev/null
 		# Adicionar hosts para limitar acesso
 		grep -q -F '127.0.0.1 xml.cisco.com' /etc/hosts || echo '127.0.0.1 xml.cisco.com' >> /etc/hosts
 
