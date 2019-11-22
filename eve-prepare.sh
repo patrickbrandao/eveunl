@@ -32,6 +32,7 @@ export PATH="/bin:/sbin:/usr/sbin:/usr/bin:/usr/local/bin:/usr/local/sbin:$PATH"
 	ALL_VYOS_VERSIONS="
 		1.1.7-amd64
 		1.2.3-amd64
+		1.3-20191121-adm64
 	"
 
 	# Diretorio de downloads
