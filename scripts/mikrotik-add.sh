@@ -34,6 +34,7 @@
 		6.37.4
 		6.38
 		6.38.1
+		6.45.9
 	"
 
 # x - pre-requisitos
@@ -84,7 +85,7 @@
 		rm -rf "$rundir" 2>/dev/null
 
 	# 2 - download da imagem do site da mititiki
-		url="http://download2.mikrotik.com/routeros/$ver/chr-$ver.vmdk"
+		url="https://download.mikrotik.com/routeros/$ver/chr-$ver.vmdk"
 
 		echo "** Versao: $ver"
 		echo "** URL...: $url"
